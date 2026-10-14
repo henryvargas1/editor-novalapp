@@ -36,11 +36,47 @@ console.log('▶ 1/3 Preparando video 1080x1920...');
 run('ffmpeg', ['-loglevel', 'error', '-y', '-i', src, '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920',
   '-c:v', 'libx264', '-crf', '18', '-preset', 'veryfast', '-c:a', 'aac', '-b:a', '192k', path.join(raiz, 'tmp', 'clip.mp4')]);
 fs.renameSync(path.join(raiz, 'tmp', 'clip.mp4'), clipPath); // así se puede usar public/clip.mp4 como entrada
-const duracion = parseFloat(run('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', clipPath]));
+const medir = () => parseFloat(run('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', clipPath]));
+let duracion = medir();
+const py = (modo, a, b) => execFileSync('python3', [path.join(raiz, 'scripts', 'transcribir.py'), modo, a, b], {stdio: 'inherit'});
+const tienePy = (mod) => { try { execFileSync('python3', ['-c', `import ${mod}`], {stdio: 'ignore'}); return true; } catch { return false; } };
+
+// 1b) Quitar silencios (Silero VAD): corta los vacíos entre frases
+if (!desdeJson && !args.includes('--con-silencios') && tienePy('faster_whisper')) {
+  console.log('▶ Quitando silencios (Silero)...');
+  const wav0 = path.join(raiz, 'tmp', 'vad.wav');
+  run('ffmpeg', ['-loglevel', 'error', '-y', '-i', clipPath, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', wav0]);
+  py('vad', wav0, path.join(raiz, 'tmp', 'vad.json'));
+  const tramos = [];
+  for (const t of JSON.parse(fs.readFileSync(path.join(raiz, 'tmp', 'vad.json'), 'utf8')).voz) {
+    const ult = tramos.at(-1);
+    if (ult && t.inicio - ult.fin < 0.15) ult.fin = t.fin; else tramos.push({...t});
+  }
+  const quitado = duracion - tramos.reduce((s, t) => s + t.fin - t.inicio, 0);
+  if (tramos.length && quitado > 0.4) {
+    const f = tramos.map((t, i) => `[0:v]trim=start=${t.inicio}:end=${t.fin},setpts=PTS-STARTPTS[v${i}];[0:a]atrim=start=${t.inicio}:end=${t.fin},asetpts=PTS-STARTPTS[a${i}];`).join('')
+      + tramos.map((_, i) => `[v${i}][a${i}]`).join('') + `concat=n=${tramos.length}:v=1:a=1[v][a]`;
+    const tmpCut = path.join(raiz, 'tmp', 'cortado.mp4');
+    run('ffmpeg', ['-loglevel', 'error', '-y', '-i', clipPath, '-filter_complex', f, '-map', '[v]', '-map', '[a]',
+      '-c:v', 'libx264', '-crf', '18', '-preset', 'veryfast', '-c:a', 'aac', '-b:a', '192k', tmpCut]);
+    fs.renameSync(tmpCut, clipPath);
+    duracion = medir();
+    console.log(`  ✔ ${quitado.toFixed(1)} s de silencio eliminados (${tramos.length} tramos)`);
+  }
+}
+
+// 1c) Seguir la cara (OpenCV, como Apple Vision): mantiene el encuadre centrado en los zooms
+let cara = [];
+if (!desdeJson && tienePy('cv2')) {
+  console.log('▶ Detectando la cara para centrar el encuadre...');
+  py('cara', clipPath, path.join(raiz, 'tmp', 'cara.json'));
+  cara = JSON.parse(fs.readFileSync(path.join(raiz, 'tmp', 'cara.json'), 'utf8'));
+}
 
 if (usarGuion) {
   const gu = JSON.parse(fs.readFileSync(usarGuion, 'utf8'));
   gu.video = clip;
+  if (cara.length) gu.cara = cara;
   fs.writeFileSync(path.join(raiz, 'guion.json'), JSON.stringify(gu, null, 2));
   console.log(`✔ Usando guion existente: ${usarGuion}`);
   process.exit(0);
@@ -66,7 +102,7 @@ if (desdeJson) {
     run(whisper, ['-m', modelo, '-f', wav, '-l', 'es', '-ml', '1', '-sow', '-oj', '-of', salida, '-np']);
   } else {
     // en la nube (GitHub Actions): faster-whisper en Python
-    execFileSync('python3', [path.join(raiz, 'scripts', 'transcribir.py'), wav, `${salida}.json`], {stdio: 'inherit'});
+    py('texto', wav, `${salida}.json`);
   }
   const json = JSON.parse(fs.readFileSync(`${salida}.json`, 'utf8'));
   fs.copyFileSync(`${salida}.json`, path.join(raiz, 'public', 'transcripcion.json'));
@@ -98,6 +134,7 @@ const guion = {
   hologramas: [], // agrégalos a mano o pídeselo a Claude
   zooms,
   planos,
+  ...(cara.length ? {cara} : {}),
   ...(musica ? {musica, volumenMusica: E.volumenMusica ?? 0.15} : {}),
 };
 fs.writeFileSync(guionPath, JSON.stringify(guion, null, 2));
