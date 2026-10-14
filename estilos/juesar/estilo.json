@@ -1,0 +1,19 @@
+{
+  "nombre": "juesar",
+  "descripcion": "Narrativa cinematográfica (referencia Juesar): look oscuro teal, viñeta y grano; subtítulos pequeños Inter en minúscula que aparecen palabra por palabra (gris → blanco); frases fuertes con brillo y aberración cromática; un cambio de plano cada ~3.5 s con empuje lento; música de fondo suave.",
+  "color": "#7fe8ff",
+  "acento": "#ffffff",
+  "maxPalabras": 3,
+  "ritmoPlanos": 3.5,
+  "escalasPlanos": [
+    1.0,
+    1.18,
+    1.06,
+    1.26
+  ],
+  "zooms": false,
+  "glow": "clave",
+  "textoY": 0.62,
+  "volumenMusica": 0.12,
+  "promptImagen": "cinematic film still, moody teal and amber color grade, dramatic low-key lighting, shallow depth of field, photorealistic, 35mm film grain"
+}

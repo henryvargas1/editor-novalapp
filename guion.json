@@ -1,0 +1,58 @@
+{
+  "video": "",
+  "duracionSegundos": 12,
+  "estilo": {
+    "nombre": "reels",
+    "color": "#22e6ff",
+    "acento": "#ffd23f"
+  },
+  "textos": [
+    {
+      "texto": "Claude ahora edita videos",
+      "inicio": 0.3,
+      "fin": 2.6,
+      "resaltar": [
+        "Claude"
+      ]
+    },
+    {
+      "texto": "con solo tres herramientas",
+      "inicio": 2.7,
+      "fin": 5.0,
+      "resaltar": [
+        "tres"
+      ]
+    },
+    {
+      "texto": "y todas son gratis",
+      "inicio": 8.2,
+      "fin": 11.5,
+      "resaltar": [
+        "gratis"
+      ]
+    }
+  ],
+  "hologramas": [
+    {
+      "inicio": 4.8,
+      "fin": 8.4,
+      "titulo": "STACK",
+      "items": [
+        "Remotion",
+        "HyperFrames",
+        "FFmpeg"
+      ],
+      "posicion": "centro"
+    }
+  ],
+  "zooms": [
+    {
+      "inicio": 2.7,
+      "escala": 1.12
+    },
+    {
+      "inicio": 8.2,
+      "escala": 1.18
+    }
+  ]
+}

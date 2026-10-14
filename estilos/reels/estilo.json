@@ -1,0 +1,9 @@
+{
+  "nombre": "reels",
+  "descripcion": "Reels de venta: subtítulos grandes en MAYÚSCULAS con palabra clave amarilla, hologramas cian y zooms rápidos.",
+  "color": "#22e6ff",
+  "acento": "#ffd23f",
+  "maxPalabras": 4,
+  "zooms": true,
+  "promptImagen": "vibrant commercial photography, clean bright lighting, high detail, photorealistic"
+}
