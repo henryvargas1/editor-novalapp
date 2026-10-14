@@ -70,7 +70,15 @@ jobs:
       - name: Exportar video
         run: npx remotion render src/index.ts Edicion "out/$NOMBRE-editado.mp4"
 
+      - name: Descargar video editado
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NOMBRE }}-editado
+          path: out/*.mp4
+          retention-days: 14
+
       - name: Guardar guion y escenas en resultados/
+        continue-on-error: true
         run: |
           mkdir -p "resultados/$NOMBRE/escenas"
           cp guion.json "resultados/$NOMBRE/guion.json"
@@ -79,11 +87,4 @@ jobs:
           git config user.email "editor-bot@users.noreply.github.com"
           git add "resultados/$NOMBRE"
           git commit -m "Resultado: $NOMBRE" || echo "sin cambios"
-          git pull --rebase -q && git push
-
-      - name: Descargar video editado
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.NOMBRE }}-editado
-          path: out/*.mp4
-          retention-days: 14
+          git pull --rebase --autostash -q && git push
