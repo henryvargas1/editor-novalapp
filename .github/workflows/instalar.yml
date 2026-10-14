@@ -1,0 +1,19 @@
+name: Instalar editor
+on:
+  push:
+    paths: ['instalar.b64']
+permissions:
+  contents: write
+jobs:
+  instalar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          base64 -d instalar.b64 | tar xz
+          git rm -q instalar.b64
+          git config user.name "editor-bot"
+          git config user.email "editor-bot@users.noreply.github.com"
+          git add -A
+          git commit -m "Instalar editor"
+          git push
