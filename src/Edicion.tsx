@@ -22,6 +22,8 @@ export type Guion = {
     valor?: string; etiqueta?: string; texto?: string; titulo?: string; items?: string[]}[];
   musica?: string;
   volumenMusica?: number;
+  // posición de la cara (0-1) en el tiempo: centra el encuadre en zooms y planos
+  cara?: {t: number; x: number; y: number}[];
 };
 
 // Zoom "punch-in": salto rápido y regreso suave
@@ -50,15 +52,34 @@ const usePlano = (planos: NonNullable<Guion['planos']>, total: number) => {
   return {escala: p.escala * (1 + 0.05 * avance), x: p.x ?? 0, y: p.y ?? 0};
 };
 
+// Posición de la cara en el tiempo actual (interpolada)
+const useCara = (cara: Guion['cara']) => {
+  const frame = useCurrentFrame();
+  const {fps} = useVideoConfig();
+  if (!cara?.length) return null;
+  const t = frame / fps;
+  const ts = cara.map((c) => c.t);
+  const opts = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
+  return {x: interpolate(t, ts.length > 1 ? ts : [0, 1], cara.length > 1 ? cara.map((c) => c.x) : [cara[0].x, cara[0].x], opts),
+    y: interpolate(t, ts.length > 1 ? ts : [0, 1], cara.length > 1 ? cara.map((c) => c.y) : [cara[0].y, cara[0].y], opts)};
+};
+
 export const Edicion: React.FC<Guion> = (g) => {
   const {fps} = useVideoConfig();
   const zoom = useZoom(g.zooms);
   const plano = usePlano(g.planos ?? [], g.duracionSegundos);
   const sec = (s: number) => Math.round(s * fps);
+  const cara = useCara(g.cara);
+  const escalaTotal = zoom * plano.escala;
+  // mover el video para acercar la cara al centro, sin mostrar bordes negros
+  const limite = escalaTotal > 1 ? ((escalaTotal - 1) / (2 * escalaTotal)) * 100 : 0;
+  const clamp = (v: number) => Math.max(-limite, Math.min(limite, v));
+  const tx = clamp(plano.x + (cara ? ((0.5 - cara.x) * 100) / escalaTotal : 0));
+  const ty = clamp(plano.y + (cara ? ((0.42 - cara.y) * 100) / escalaTotal : 0));
   const cine = g.estilo.nombre === 'juesar';
   return (
     <AbsoluteFill style={{backgroundColor: '#05070d', fontFamily}}>
-      <AbsoluteFill style={{transform: `scale(${zoom * plano.escala}) translate(${plano.x}%, ${plano.y}%)`}}>
+      <AbsoluteFill style={{transform: `scale(${escalaTotal}) translate(${tx}%, ${ty}%)`}}>
         {g.video
           ? <OffthreadVideo src={staticFile(g.video)} style={{width: '100%', height: '100%', objectFit: 'cover',
               filter: cine ? 'contrast(1.15) saturate(0.68) brightness(0.74)' : undefined}} />
